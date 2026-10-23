@@ -27,7 +27,7 @@ Os dados (mesas, colaboradores, usuários) ficam criptografados no arquivo **`da
 
 1. No GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
    - *Repository access*: **Only select repositories** → escolha só este repositório.
-   - *Permissions → Repository permissions*: **Contents → Read and write**.
+   - *Permissions → Repository permissions*: clique em **Add permissions**, escolha **Contents** e mude o acesso para **Read and write** (o **Metadata: Read-only** já vem marcado e é obrigatório).
    - Defina uma validade (por exemplo, 90 dias).
 2. Abra o site, entre como administrador e faça qualquer alteração. Aparece a janela **Publicar alterações automaticamente**.
 3. Informe `usuario/repositorio`, a branch (`main`) e cole o token. Clique em **Testar e salvar**.
