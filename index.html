@@ -72,7 +72,7 @@
 
   /* collab card */
   .collab-card { padding: 10px; border-radius: 8px; border: 1.5px solid transparent; transition: all .15s; margin-bottom: 3px; background: var(--surface); }
-  .collab-card:hover { background: #f9fafb; border-color: #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,.06); transform: translateY(-1px); }
+  @media (hover: hover) { .collab-card:hover { background: #f9fafb; border-color: #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,.06); transform: translateY(-1px); } }
   .group-header:hover { background: #f9fafb; }
   .collab-card.selected { background: #EBF0FB; border-color: var(--brand); }
   .collab-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; }
@@ -110,8 +110,10 @@
 
   /* ── Desk slots ── */
   .desk { position: absolute; width: var(--desk-w, 70px); height: var(--desk-h, 52px); border-radius: 8px; border: 2px solid #e5e7eb; background: white; cursor: default; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all .15s; font-size: 10px; color: var(--muted); user-select: none; }
-  .desk:hover:not(.unavailable):not(.occupied):not(.occupied-away) { border-color: #1D3F80; background: #EBF0FB; transform: scale(1.05); }
-  .desk.occupied:hover, .desk.occupied-away:hover { transform: scale(1.05); filter: brightness(1.1); }
+  @media (hover: hover) { .desk:hover:not(.unavailable):not(.occupied):not(.occupied-away) { border-color: #1D3F80; background: #EBF0FB; transform: scale(1.05); } }
+  @media (hover: hover) { .desk.occupied:hover, .desk.occupied-away:hover { transform: scale(1.05); filter: brightness(1.1); } }
+  @media (hover: none) { .desk { cursor: pointer; -webkit-tap-highlight-color: transparent; } }
+  html { touch-action: manipulation; }
   body.select-mode .desk:not(.unavailable) { cursor: grab; }
   .desk.occupied { border-color: transparent; }
   .desk.occupied-away { border-color: transparent; }
@@ -760,7 +762,10 @@ body.locked > *:not(#admin-login-modal):not(script):not(#toast) { visibility: hi
   <div class="modal" style="width:380px;">
     <div class="modal-header">
       <span class="modal-title">Dados do Colaborador</span>
-      <button class="modal-close" onclick="closeInfoModal()">×</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn xs primary admin-only" onclick="moveFromInfo()" title="Fechar e escolher no mapa o novo lugar (mesmo em outro andar)" style="padding:6px 12px;min-height:32px;">Mover</button>
+        <button class="modal-close" onclick="closeInfoModal()">×</button>
+      </div>
     </div>
     <div class="modal-profile">
       <div class="modal-profile-top">
@@ -2712,6 +2717,13 @@ function openInfoModal(collab, desk) {
 function closeInfoModal() {
   document.getElementById('info-modal').style.display = 'none'
   currentInfoId = null
+}
+function moveFromInfo() {
+  const id = currentInfoId
+  closeInfoModal()
+  if (!id) return
+  startMove(id)
+  showToast('Toque no novo lugar vago no mapa. Pode trocar de andar antes.', 'success')
 }
 function openEditFromInfo() {
   const id = currentInfoId
