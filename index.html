@@ -396,6 +396,8 @@ body { height: 100vh; height: 100dvh; }   /* 100dvh: altura real visível no Saf
   .header-right .btn { padding: 6px 10px; white-space: nowrap; }
   .legend { overflow-x: auto; flex-wrap: nowrap; white-space: nowrap; -webkit-overflow-scrolling: touch; }
 }
+.collab-card.flash-red { background: #fef2f2 !important; border-color: #fca5a5 !important; }
+.collab-card.flash-red .collab-name { color: #dc2626 !important; }
 /* Tela de bloqueio (dados criptografados): esconde tudo menos o login */
 body.locked > *:not(#admin-login-modal):not(script):not(#toast) { visibility: hidden !important; }
 </style>
@@ -3944,6 +3946,7 @@ function makeDraggable(el, desk) {
   let clickTimer = null
   el.addEventListener('click', e => {
     if (clickBlocked) { clickBlocked = false; return }
+    if (!selectedCollabId) { const _o = getOccupant(desk.id); if (_o) revealCollabInList(_o.id) }
 
     // Double click sempre abre o modal (qualquer modo)
     if (clickTimer) {
@@ -4133,6 +4136,32 @@ function applyTransform() {
 
 function zoomIn()    { zoomLevel = Math.min(2, zoomLevel * 1.15); applyTransform(); updateZoomLabel(); updateMiniMap() }
 function zoomOut()   { zoomLevel = Math.max(0.5, zoomLevel / 1.15); applyTransform(); updateZoomLabel(); updateMiniMap() }
+// ── Clique em lugar ocupado: localiza o colaborador na lista à esquerda ───────
+let _flashTimer = null
+function revealCollabInList(collabId) {
+  const c = getCollab(collabId); if (!c) return
+  const find = () => document.getElementById('card-' + collabId)
+  let card = find()
+  if (!card) {
+    // grupo recolhido? expande
+    const gName = c.vertical || c.area || 'Sem grupo'
+    if (_collapsedGroups.has(gName)) { _collapsedGroups.delete(gName); renderSidebar(); card = find() }
+  }
+  if (!card) {
+    // filtros/busca escondendo o colaborador: limpa e redesenha
+    ['search', 'status-filter', 'floor-filter', 'device-filter', 'area-filter'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
+    if (vagasMode && typeof toggleVagas === 'function') toggleVagas()
+    renderSidebar(); card = find()
+    if (card) showToast('Filtros limpos para mostrar ' + c.nome + '.', 'success')
+  }
+  if (!card) return
+  document.querySelectorAll('.collab-card.flash-red').forEach(el => el.classList.remove('flash-red'))
+  clearTimeout(_flashTimer)
+  card.classList.add('flash-red')
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch (_) { card.scrollIntoView() }
+  _flashTimer = setTimeout(() => { const el = find(); if (el) el.classList.remove('flash-red') }, 2500)
+}
+
 function resetView() { zoomLevel = 1; panX = 0; panY = 0; applyTransform(); updateZoomLabel(); updateMiniMap() }
 function setGridSize(px) {
   SNAP_GRID = Number(px)
