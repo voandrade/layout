@@ -4141,6 +4141,7 @@ let _flashTimer = null
 function revealCollabInList(collabId) {
   const c = getCollab(collabId); if (!c) return
   const find = () => document.getElementById('card-' + collabId)
+  if (window.innerWidth < 768 && typeof openSidebar === 'function' && !_sidebarOpen) openSidebar()   // celular: abre a lista (gaveta)
   let card = find()
   if (!card) {
     // grupo recolhido? expande
