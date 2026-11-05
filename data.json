@@ -3036,7 +3036,7 @@
       "x": 152.0000000000001,
       "y": 614.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-45",
@@ -3044,7 +3044,7 @@
       "x": 223.0000000000001,
       "y": 614.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-46",
@@ -6966,7 +6966,7 @@
       "email": "",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-44"
+      "mesa_id": "V-45"
     },
     {
       "id": "c1793201616822",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898519906
+  "savedAt": 1793898528988
 }
