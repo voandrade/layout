@@ -2988,7 +2988,7 @@
       "x": 152.0000000000001,
       "y": 561.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-39",
@@ -2996,7 +2996,7 @@
       "x": 223.0000000000001,
       "y": 561.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-40",
@@ -5870,7 +5870,7 @@
       "email": "edgardrf.consult@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-39",
+      "mesa_id": "V-38",
       "divisao": "JK"
     },
     {
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898618401
+  "savedAt": 1793898622367
 }
