@@ -3180,7 +3180,7 @@
       "x": 223.0000000000001,
       "y": 842.0819906859297,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-63",
@@ -3212,7 +3212,7 @@
       "x": 152.0000000000001,
       "y": 895.0819906859297,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-67",
@@ -6876,7 +6876,7 @@
       "email": "fredson.barros@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-66"
+      "mesa_id": "V-62"
     },
     {
       "id": "c1793200417764_259",
@@ -15521,5 +15521,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898656777
+  "savedAt": 1793898686742
 }
