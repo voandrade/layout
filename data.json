@@ -6955,15 +6955,15 @@
     },
     {
       "id": "c1793201606259",
-      "nome": "Reservado",
-      "cargo": "",
-      "vertical": "",
-      "empresa": "",
+      "nome": "Guilherme Ferraz Do Amaral",
+      "cargo": "Consultor Comercial",
+      "vertical": "Comercial",
+      "empresa": "Nova SRM",
       "area": "Comercial SRM",
       "subarea": "Comercial SE-SUL",
       "divisao": "JK",
-      "gestor": "",
-      "email": "",
+      "gestor": "Luciana Mascarenhas Belem",
+      "email": "guilherme.consult@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
       "mesa_id": "V-45"
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898532521
+  "savedAt": 1793898596781
 }
