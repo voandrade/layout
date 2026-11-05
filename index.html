@@ -495,26 +495,42 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
 
 <!-- ── Admin Login Modal ── -->
 <!-- Modal: Publicar no GitHub -->
-<div class="overlay" id="gh-token-modal" style="display:none" onclick="if(event.target===this)closeGhTokenModal()">
-  <div class="modal" style="width:420px;max-width:95vw;">
+<div class="overlay" id="gh-modal" style="display:none" onclick="if(event.target===this)closePublishDialog()">
+  <div class="modal" style="width:440px;max-width:95vw;">
     <div class="modal-header">
-      <span class="modal-title">☁ Publicar no GitHub</span>
-      <button class="modal-close" onclick="closeGhTokenModal()">×</button>
+      <span class="modal-title">Publicar alterações automaticamente</span>
+      <button class="modal-close" onclick="closePublishDialog()">×</button>
     </div>
-    <p style="font-size:12px;color:#6b7280;line-height:1.55;margin:0 0 14px;">
-      As alterações são salvas no repositório do GitHub e ficam visíveis para todos os usuários ao abrir a página.<br>
-      Use um token <strong>fine-grained</strong> com permissão <strong>Contents: Read and write</strong> neste repositório.
+    <p style="font-size:12px;color:#6b7280;line-height:1.55;margin:0 0 12px;">
+      As alterações são gravadas no arquivo de dados do repositório do GitHub, sem precisar escolher arquivo.<br>
+      O token fica salvo só neste navegador. Use um token <strong>fine-grained</strong> restrito a este repositório, com a permissão <strong>Contents: Read and write</strong>.
     </p>
-    <div>
-      <label class="field-label">Token do GitHub</label>
-      <input class="field-input" id="gh-token-input" type="password" placeholder="github_pat_…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-        onkeydown="if(event.key==='Enter')salvarGhToken()" />
+    <div class="form-grid">
+      <div>
+        <label class="field-label">Repositório</label>
+        <input class="field-input" id="gh-repo" placeholder="usuario/repositorio" autocomplete="off" />
+      </div>
+      <div class="form-row2">
+        <div>
+          <label class="field-label">Branch</label>
+          <input class="field-input" id="gh-branch" placeholder="main" autocomplete="off" />
+        </div>
+        <div>
+          <label class="field-label">Arquivo de dados</label>
+          <input class="field-input" id="gh-path" placeholder="data.json" autocomplete="off" />
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Token do GitHub</label>
+        <input class="field-input" id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" />
+      </div>
     </div>
-    <div class="error-box" id="gh-token-error" style="display:none"></div>
+    <div class="error-box" id="gh-error" style="display:none"></div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:6px;">
-      <button class="btn danger" id="gh-disconnect-btn" style="display:none;margin-right:auto;" onclick="ghDesconectar()">Desconectar</button>
-      <button class="btn" onclick="closeGhTokenModal()">Cancelar</button>
-      <button class="btn primary" id="gh-save-btn" onclick="salvarGhToken()">Testar e salvar</button>
+      <button class="btn" id="gh-local-btn" style="display:none;margin-right:auto;" onclick="ghUseLocalFile()">Usar arquivo local</button>
+      <button class="btn danger" id="gh-disconnect-btn" style="display:none;margin-right:auto;" onclick="ghDisconnect()">Desconectar</button>
+      <button class="btn" onclick="closePublishDialog()">Cancelar</button>
+      <button class="btn primary" id="gh-save-btn" onclick="ghSaveConfig()">Testar e salvar</button>
     </div>
   </div>
 </div>
@@ -629,11 +645,6 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
   👁 MODO VISUALIZAÇÃO — Você está em modo somente leitura
 </div>
 
-<!-- Banner de configuração do token (GitHub Pages, sem token salvo) -->
-<div id="gh-token-banner" style="display:none;background:#92400e;color:white;text-align:center;font-size:12px;font-weight:500;padding:8px 16px;flex-shrink:0;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
-  <span>⚠ Suas alterações não estão sendo salvas para outros usuários.</span>
-  <button onclick="configurarTokenGitHub()" style="background:white;color:#92400e;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Configurar agora</button>
-</div>
 
 <!-- Body -->
 <div class="app-body">
@@ -1459,14 +1470,10 @@ function applySession() {
   // Init app
   if (!appInitialized) { initApp(); appInitialized = true }
   else { renderSidebar(); renderMap(); }
-  // Verificar status do arquivo vinculado (apenas admin)
+  // Verificar status de publicação (apenas admin)
   if (currentUser.role === 'admin') {
-    if (isGitHubPages()) {
-      atualizarBannerToken()
-      setSyncState(getGitHubToken() ? 'synced' : 'unlinked')
-    } else {
-      getSyncHandle().then(h => setSyncState(h ? 'synced' : 'unlinked'))
-    }
+    if (ghCfg()) setSyncState('synced')
+    else getSyncHandle().then(h => setSyncState(h ? 'synced' : 'unlinked'))
   }
 }
 
@@ -4719,34 +4726,162 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ desks, collaborators, currentFloor, floorLabels: FLOOR_LABEL, areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now() }))
     _unsavedChanges = true
   } catch(e) { console.warn('Save failed:', e) }
-  // GitHub Pages: publica automaticamente após 4s de inatividade se token já estiver salvo
-  if (isGitHubPages()) {
-    scheduleAutoPublish()
-  } else {
-    // Local: se já vinculado, grava; senão solicita vinculação
-    getSyncHandle().then(h => {
-      if (h) syncToFile()
-      else showSyncPrompt()
-    })
-  }
+  if (currentUser?.role !== 'admin') return
+  queueFileWrite()
 }
 
 let _unsavedChanges = false
-let _autoPublishTimer = null
-function scheduleAutoPublish() {
-  if (!getGitHubToken()) {
-    // Sem token: mostra banner para o usuário configurar com um toque
-    atualizarBannerToken()
-    setSyncState('unlinked')
+// ── Publicação automática no GitHub (grava data.json via API) ─────────────────
+let _writing = false, _writeAgain = false
+let _saveTimer = null
+let _ghPromptShown = false
+
+function queueFileWrite() {
+  if (ghCfg()) {
+    setSyncState('saving')
+    clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(runWriteLoop, 1500)
     return
   }
-  if (_autoPublishTimer) clearTimeout(_autoPublishTimer)
-  setSyncState('pending')
-  _autoPublishTimer = setTimeout(async () => {
-    _autoPublishTimer = null
-    await publishToGitHub()
-  }, 4000)
+  runWriteLoop()
 }
+
+async function runWriteLoop() {
+  if (_writing) { _writeAgain = true; return }
+  _writing = true
+  try {
+    do {
+      _writeAgain = false
+      setSyncState('saving')
+      const gh = ghCfg()
+      let ok
+      if (gh) {
+        ok = await publishToGitHub(gh)
+      } else {
+        const known = _syncHandle || await _idbGet()
+        if (!known) {
+          setSyncState('unlinked')
+          if (!_ghPromptShown) { _ghPromptShown = true; openPublishDialog() }
+          break
+        }
+        const h = await getSyncHandle()
+        if (!h) { setSyncState('unlinked'); break }
+        ok = await writeToFile(h)
+      }
+      if (ok && !_writeAgain) _unsavedChanges = false
+      setSyncState(ok ? 'synced' : 'error')
+      if (!ok) break
+    } while (_writeAgain)
+  } finally { _writing = false }
+}
+
+const GH_KEY = 'layout-srm-gh'
+function ghCfg() {
+  try { const c = JSON.parse(localStorage.getItem(GH_KEY) || 'null'); return (c && c.repo && c.token) ? c : null } catch(e) { return null }
+}
+function ghGuessRepo() {
+  try {
+    if (location.hostname.endsWith('.github.io')) {
+      const seg = location.pathname.split('/').filter(Boolean)[0]
+      if (seg && !seg.endsWith('.html')) return location.hostname.split('.')[0] + '/' + seg
+    }
+  } catch(e) {}
+  return ''
+}
+function ghHeaders(cfg, extra) {
+  return { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + cfg.token, 'X-GitHub-Api-Version': '2022-11-28', ...(extra || {}) }
+}
+let _ghLastError = ''
+async function publishToGitHub(cfg, quiet) {
+  const fail = msg => { _ghLastError = msg; if (!quiet) showToast(msg, 'error'); return false }
+  _ghLastError = ''
+  try {
+    const payload = { desks, collaborators, floorLabels: FLOOR_LABEL,
+      userOverrides: JSON.parse(localStorage.getItem('layout-srm-users-overrides') || '{}'),
+      extraUsers: JSON.parse(localStorage.getItem('layout-srm-users') || '[]'),
+      areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now() }
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))))
+    // Busca SHA atual
+    const r0 = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`, { headers: ghHeaders(cfg), cache: 'no-store' })
+    if (r0.status === 401 || r0.status === 403) return fail('Token inválido ou sem permissão. Clique em Publicar para reconfigurar.')
+    let sha = null
+    if (r0.ok) { const j = await r0.json(); sha = j.sha }
+    const body = { message: `Atualiza dados do layout (${currentUser?.username || 'admin'})`, content, branch: cfg.branch }
+    if (sha) body.sha = sha
+    const r = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`, { method: 'PUT', headers: ghHeaders(cfg, { 'Content-Type': 'application/json' }), body: JSON.stringify(body) })
+    if (r.status === 409 || r.status === 422) return fail('Conflito ao publicar. Tente de novo.')
+    if (r.status === 401 || r.status === 403) return fail('Token inválido ou sem permissão. Clique em Publicar para reconfigurar.')
+    if (r.status === 404) return fail('Repositório ou branch não encontrado.')
+    if (!r.ok) return fail('GitHub respondeu ' + r.status)
+    return true
+  } catch(e) { return fail('Não foi possível publicar: ' + (e.message || e)) }
+}
+
+function openPublishDialog() {
+  const c = ghCfg() || {}
+  document.getElementById('gh-repo').value   = c.repo   || ghGuessRepo()
+  document.getElementById('gh-branch').value = c.branch || 'main'
+  document.getElementById('gh-path').value   = c.path   || 'data.json'
+  const tk = document.getElementById('gh-token')
+  tk.value = ''
+  tk.placeholder = c.token ? 'Token já salvo neste navegador (deixe em branco para manter)' : 'github_pat_…'
+  document.getElementById('gh-error').style.display = 'none'
+  document.getElementById('gh-local-btn').style.display      = (window.showOpenFilePicker && !c.token) ? '' : 'none'
+  document.getElementById('gh-disconnect-btn').style.display = c.token ? '' : 'none'
+  document.getElementById('gh-modal').style.display = 'flex'
+  setTimeout(() => { try { document.getElementById(c.token ? 'gh-token' : (c.repo || ghGuessRepo() ? 'gh-token' : 'gh-repo')).focus() } catch(e) {} }, 60)
+}
+function closePublishDialog() { document.getElementById('gh-modal').style.display = 'none' }
+function _ghErr(msg) { const e = document.getElementById('gh-error'); e.textContent = msg; e.style.display = 'block' }
+
+async function ghSaveConfig() {
+  const old = ghCfg()
+  const repo   = document.getElementById('gh-repo').value.trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\.git$/i,'').replace(/\/+$/,'')
+  const branch = document.getElementById('gh-branch').value.trim() || 'main'
+  const path   = (document.getElementById('gh-path').value.trim() || 'data.json').replace(/^\/+/,'')
+  const token  = document.getElementById('gh-token').value.trim() || (old && old.token) || ''
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return _ghErr('Informe o repositório no formato usuario/repositorio.')
+  if (!token) return _ghErr('Cole o token do GitHub.')
+  const btn = document.getElementById('gh-save-btn'); btn.disabled = true; btn.textContent = 'Testando…'
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: ghHeaders({ token }), cache: 'no-store' })
+    if (r.status === 401) return _ghErr('Token inválido ou expirado.')
+    if (r.status === 404) return _ghErr('Repositório não encontrado — confira o nome e se o token tem acesso a ele.')
+    if (!r.ok) return _ghErr('GitHub respondeu ' + r.status + '.')
+    const j = await r.json()
+    if (j.permissions && j.permissions.push === false) return _ghErr('O token não tem permissão de escrita (use Contents: Read and write).')
+    btn.textContent = 'Publicando…'
+    localStorage.setItem(GH_KEY, JSON.stringify({ repo, branch, path, token }))
+    const ok = await publishToGitHub({ repo, branch, path, token }, true)
+    if (!ok) {
+      if (old) localStorage.setItem(GH_KEY, JSON.stringify(old)); else localStorage.removeItem(GH_KEY)
+      return _ghErr(_ghLastError || 'Não foi possível gravar no repositório.')
+    }
+    _unsavedChanges = false
+    setSyncState('synced')
+    closePublishDialog()
+    showToast('✓ Publicação automática ativada neste navegador.', 'success')
+  } catch(e) { _ghErr('Falha de rede ao falar com o GitHub.') }
+  finally { btn.disabled = false; btn.textContent = 'Testar e salvar' }
+}
+
+function ghDisconnect() {
+  if (!confirm('Remover o token e a configuração de publicação deste navegador?')) return
+  localStorage.removeItem(GH_KEY)
+  closePublishDialog()
+  setSyncState('unlinked')
+  showToast('Publicação desconectada neste navegador.', 'success')
+}
+
+async function ghUseLocalFile() {
+  const h = await getSyncHandle(true)
+  if (!h) return
+  closePublishDialog()
+  queueFileWrite()
+}
+
+function linkAndSync() { openPublishDialog() }
+function retryPublish() { _unsavedChanges = true; queueFileWrite() }
 const changeLog = []
 const MAX_LOG = 50
 function logAction(action, detail) {
@@ -4853,154 +4988,22 @@ function loadEmbeddedData() {
   } catch(e) { return false }
 }
 
-// ── GitHub API Sync ───────────────────────────────────────────────────────────
-const GITHUB_REPO  = 'voandrade/layout'
-const GITHUB_FILE  = 'data.json'
-const GITHUB_TOKEN_KEY = 'layout-srm-gh-token'
-
-function isGitHubPages() {
-  return location.hostname.endsWith('github.io') || location.hostname === 'github.io'
-}
-
-function getGitHubToken() {
-  return localStorage.getItem(GITHUB_TOKEN_KEY) || ''
-}
-
-function setGitHubToken(token) {
-  localStorage.setItem(GITHUB_TOKEN_KEY, token.trim())
-}
-
-function resetGitHubToken() {
-  localStorage.removeItem(GITHUB_TOKEN_KEY)
-  openGhTokenModal()
-}
-
-function openGhTokenModal() {
-  const temToken = !!getGitHubToken()
-  const inp = document.getElementById('gh-token-input')
-  inp.value = ''
-  inp.placeholder = temToken ? 'Token já salvo neste navegador (deixe em branco para manter)' : 'github_pat_…'
-  document.getElementById('gh-token-error').style.display = 'none'
-  document.getElementById('gh-disconnect-btn').style.display = temToken ? '' : 'none'
-  document.getElementById('gh-token-modal').style.display = 'flex'
-  setTimeout(() => { try { inp.focus() } catch(e) {} }, 60)
-}
-
-function closeGhTokenModal() {
-  document.getElementById('gh-token-modal').style.display = 'none'
-}
-
-function _ghTokenErr(msg) {
-  const e = document.getElementById('gh-token-error')
-  e.textContent = msg; e.style.display = 'block'
-}
-
-async function salvarGhToken() {
-  const tokenAtual = getGitHubToken()
-  const val = document.getElementById('gh-token-input').value.trim()
-  const token = val || tokenAtual
-  if (!token) return _ghTokenErr('Cole o token do GitHub.')
-  const btn = document.getElementById('gh-save-btn')
-  btn.disabled = true; btn.textContent = 'Testando…'
-  document.getElementById('gh-token-error').style.display = 'none'
-  try {
-    // Valida o token consultando o repositório antes de salvar
-    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
-      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' },
-      cache: 'no-store'
-    })
-    if (r.status === 401) return _ghTokenErr('Token inválido ou expirado.')
-    if (r.status === 404) return _ghTokenErr('Repositório não encontrado. Verifique se o token tem acesso a ' + GITHUB_REPO + '.')
-    if (!r.ok) return _ghTokenErr('GitHub respondeu ' + r.status + '.')
-    const j = await r.json()
-    if (j.permissions && j.permissions.push === false) return _ghTokenErr('O token não tem permissão de escrita. Use Contents: Read and write.')
-    // Token válido: salva e publica
-    btn.textContent = 'Publicando…'
-    setGitHubToken(token)
-    closeGhTokenModal()
-    atualizarBannerToken()
-    await publishToGitHub()
-    showToast('✓ Publicação ativada neste navegador.', 'success')
-  } catch(e) { _ghTokenErr('Falha de rede ao falar com o GitHub.') }
-  finally { btn.disabled = false; btn.textContent = 'Testar e salvar' }
-}
-
-function ghDesconectar() {
-  if (!confirm('Remover o token de publicação deste navegador?')) return
-  localStorage.removeItem(GITHUB_TOKEN_KEY)
-  closeGhTokenModal()
-  atualizarBannerToken()
-  setSyncState('unlinked')
-  showToast('Publicação desconectada neste navegador.', 'success')
-}
-
-function configurarTokenGitHub() { openGhTokenModal() }
-function askGitHubToken() { openGhTokenModal(); return null }
-
-function atualizarBannerToken() {
-  if (!isGitHubPages()) return
-  const banner = document.getElementById('gh-token-banner')
-  if (!banner) return
-  const semToken = !getGitHubToken()
-  const isAdmin = currentUser && currentUser.role === 'admin'
-  banner.style.display = (semToken && isAdmin) ? 'flex' : 'none'
-}
-
-async function publishToGitHub() {
-  setSyncState('saving')
-  let token = getGitHubToken()
-  if (!token) {
-    // Sem token: abre modal para o usuário informar; publicação acontece via salvarGhToken()
-    setSyncState('unlinked')
-    openGhTokenModal()
-    return
-  }
-
-  // Ofusca o token para não ficar em texto puro no data.json (não é criptografia, apenas ofuscação)
-  const tokenOfuscado = btoa(token.split('').reverse().join(''))
-  const payload = { desks, collaborators, floorLabels: FLOOR_LABEL,
-    userOverrides: JSON.parse(localStorage.getItem('layout-srm-users-overrides') || '{}'),
-    extraUsers: JSON.parse(localStorage.getItem('layout-srm-users') || '[]'),
-    areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now(),
-    _tk: tokenOfuscado }
-
-  // Busca SHA atual do arquivo (necessário para atualizar via API)
-  const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }
-  let sha = null
-  try {
-    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, { headers })
-    if (r.status === 401) {
-      // Token inválido — pede novamente
-      localStorage.removeItem(GITHUB_TOKEN_KEY)
-      setSyncState('error')
-      showToast('Chave inválida. Clique em Publicar novamente para inserir a chave correta.', 'error')
-      return
-    }
-    if (r.ok) { const j = await r.json(); sha = j.sha }
-  } catch(e) { setSyncState('error'); showToast('Erro de conexão com o GitHub.', 'error'); return }
-
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))))
-  const body = { message: 'Atualiza dados do layout (ADM)', content, ...(sha ? { sha } : {}) }
-
-  try {
-    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, { method: 'PUT', headers, body: JSON.stringify(body) })
-    if (r.ok) {
-      _unsavedChanges = false
-      setSyncState('synced')
-      showToast('✓ Publicado! Todos verão as alterações ao abrir a página.', 'success')
-    } else {
-      const err = await r.json()
-      setSyncState('error')
-      showToast('Erro ao publicar: ' + (err.message || r.status), 'error')
-    }
-  } catch(e) { setSyncState('error'); showToast('Erro de conexão com o GitHub.', 'error') }
-}
-
 async function loadFromGitHub() {
   try {
-    const r = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/${GITHUB_FILE}?t=${Date.now()}`)
+    const cfg = ghCfg()
+    const url = cfg
+      ? `https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}?ref=${cfg.branch}`
+      : `https://raw.githubusercontent.com/voandrade/layout/main/data.json?t=${Date.now()}`
+    const opts = cfg ? { headers: ghHeaders(cfg), cache: 'no-store' } : {}
+    const r = await fetch(url, opts)
     if (!r.ok) return false
-    const data = await r.json()
+    let data
+    if (cfg) {
+      const j = await r.json()
+      data = JSON.parse(decodeURIComponent(escape(atob(String(j.content).replace(/\s/g,'')))))
+    } else {
+      data = await r.json()
+    }
     if (data.desks) desks = data.desks.map(d => ({ ...d, andar: (d.andar === 'V' || d.andar === 'T') ? d.andar : Number(d.andar) }))
     if (data.collaborators) collaborators = data.collaborators
     if (data.floorLabels) { Object.keys(FLOOR_LABEL).forEach(k => delete FLOOR_LABEL[k]); Object.assign(FLOOR_LABEL, data.floorLabels) }
@@ -5008,10 +5011,6 @@ async function loadFromGitHub() {
     if (Array.isArray(data.employeeBase)) { employeeBase = data.employeeBase; employeeBaseMeta = data.employeeBaseMeta || null }
     if (data.userOverrides) localStorage.setItem('layout-srm-users-overrides', JSON.stringify(data.userOverrides))
     if (data.extraUsers)    localStorage.setItem('layout-srm-users', JSON.stringify(data.extraUsers))
-    // Recupera token ofuscado — dispensa configuração manual em cada dispositivo
-    if (data._tk && !getGitHubToken()) {
-      try { setGitHubToken(atob(data._tk).split('').reverse().join('')) } catch(e) {}
-    }
     return true
   } catch(e) { return false }
 }
@@ -5102,28 +5101,8 @@ async function writeToFile(handle) {
   }
 }
 
-async function syncToFile() {
-  if (currentUser?.role !== 'admin') return
-  if (isGitHubPages()) return  // no GitHub Pages só publica manualmente
-  setSyncState('saving')
-  const h  = await getSyncHandle()
-  if (!h) { setSyncState('unlinked'); return }
-  const res = await writeToFile(h)
-  if (res.ok) _unsavedChanges = false
-  setSyncState(res.ok ? 'synced' : 'error')
-}
-
-async function linkAndSync() {
-  if (isGitHubPages()) { await publishToGitHub(); return }
-  // Local: limpa handle e abre seletor de arquivo
-  _syncHandle = null; await _idbDel()
-  setSyncState('saving')
-  const h  = await getSyncHandle(true)
-  if (!h) { setSyncState('unlinked'); showToast('Nenhum arquivo selecionado.', 'error'); return }
-  const res = await writeToFile(h)
-  setSyncState(res.ok ? 'synced' : 'error')
-  if (res.ok) showToast('✓ Publicado! Todos verão as alterações ao abrir o arquivo.', 'success')
-  else showToast('Erro ao gravar: ' + (res.msg || 'verifique as permissões do arquivo.'), 'error')
+function isGitHubPages() {
+  return location.hostname.endsWith('github.io') || location.hostname === 'github.io'
 }
 
 function offerDownload() {
@@ -5149,27 +5128,16 @@ function setSyncState(state) {
   const btn = document.getElementById('sync-btn')
   if (!btn) return
   if (currentUser?.role === 'admin') btn.style.display = 'inline-flex'
-  const ghPages = isGitHubPages()
-  if (!ghPages && !window.showOpenFilePicker) {
-    btn.innerHTML = '⚠ Sem suporte a sync'; btn.style.color = '#9ca3af'
-    btn.style.background = '#f9fafb'; btn.style.borderColor = '#e5e7eb'
-    btn.style.cursor = 'default'; btn.onclick = null
-    btn.title = 'Use Chrome ou Edge para habilitar a sincronização.'
-    return
-  }
-  const pubLabel = ghPages ? '☁ Publicar' : '🔗 Publicar'
-  const pubTitle = ghPages ? 'Publicar alterações no GitHub (data.json)' : 'Vincular o arquivo HTML e publicar alterações'
   const S = {
-    unlinked: { html: pubLabel,        color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title: pubTitle },
-    pending:  { html:'● Aguardando…',  color:'#92400e', bg:'#fffbeb', border:'#fde68a', cursor:'default', title:'Publicando em breve…' },
-    saving:   { html:'⟳ Salvando…',   color:'#6b7280', bg:'#f9fafb', border:'#e5e7eb', cursor:'default', title:'Salvando…' },
-    synced:   { html:'✓ Publicado',    color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'default', title:'Alterações publicadas — todos os usuários verão ao abrir a página' },
-    error:    { html:'✗ Publicar',     color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao publicar. Clique para tentar novamente.' },
+    unlinked: { html:'🔗 Publicar',  color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title:'Configurar onde publicar as alterações (GitHub ou arquivo local)' },
+    saving:   { html:'⟳ Salvando…', color:'#6b7280', bg:'#f9fafb', border:'#e5e7eb', cursor:'default', title:'Salvando…' },
+    synced:   { html:'✓ Sync',      color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'pointer', title:'Alterações publicadas. Clique para ver ou alterar o destino.' },
+    error:    { html:'✗ Publicar',  color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao publicar. Clique para tentar novamente.' },
   }
   const s = S[state] ?? S.unlinked
   btn.innerHTML = s.html; btn.style.color = s.color; btn.style.background = s.bg
   btn.style.borderColor = s.border; btn.style.cursor = s.cursor; btn.title = s.title
-  btn.onclick = (state === 'unlinked' || state === 'error') ? linkAndSync : null
+  btn.onclick = state === 'unlinked' ? openPublishDialog : state === 'error' ? retryPublish : state === 'synced' ? openPublishDialog : null
 }
 
 // ── Cross-tab real-time sync ──────────────────────────────────────────────────
