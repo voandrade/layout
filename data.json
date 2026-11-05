@@ -2737,7 +2737,7 @@
       "x": 365,
       "y": 141,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-08",
@@ -2745,7 +2745,7 @@
       "x": 436,
       "y": 141,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-09",
@@ -7146,7 +7146,7 @@
       "email": "enrique.consult@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-08"
+      "mesa_id": "V-07"
     },
     {
       "id": "c1793219494093",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898009623
+  "savedAt": 1793898023358
 }
