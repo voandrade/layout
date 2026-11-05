@@ -4725,7 +4725,7 @@ function showSyncPrompt() {
   }
   _syncPromptShown = true
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;'
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9000;'
   overlay.innerHTML = `
     <div style="background:white;border-radius:12px;padding:28px 28px 22px;width:400px;max-width:95vw;box-shadow:0 8px 40px rgba(0,8,30,.22);">
       <div style="font-size:32px;text-align:center;margin-bottom:12px;">💾</div>
@@ -4740,14 +4740,14 @@ function showSyncPrompt() {
         <button id="sync-prompt-no"  style="padding:8px;background:none;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer;">Lembrar depois (dados ficam só no cache)</button>
       </div>
     </div>`
-  document.body.appendChild(overlay)
+  document.documentElement.appendChild(overlay)
   document.getElementById('sync-prompt-yes').onclick = () => {
-    document.body.removeChild(overlay)
+    document.documentElement.removeChild(overlay)
     _syncPromptShown = false
     linkAndSync()
   }
   document.getElementById('sync-prompt-no').onclick = () => {
-    document.body.removeChild(overlay)
+    document.documentElement.removeChild(overlay)
     setSyncState('unlinked')
   }
 }
@@ -4843,11 +4843,11 @@ async function askGitHubToken() {
           <button id="_gh-token-ok" style="padding:10px 18px;border:none;border-radius:7px;background:#1D3F80;color:white;cursor:pointer;font-size:14px;font-weight:600;">Confirmar</button>
         </div>
       </div>`
-    document.body.appendChild(overlay)
+    // Usa documentElement em vez de body para contornar bug do Safari iOS com overflow:hidden no body
+    document.documentElement.appendChild(overlay)
     const input = overlay.querySelector('#_gh-token-input')
-    // setTimeout para garantir que o DOM esteja renderizado antes do focus (necessário no Safari iOS)
-    setTimeout(() => { try { input.focus() } catch(e) {} }, 100)
-    const cleanup = (val) => { try { document.body.removeChild(overlay) } catch(e) {} resolve(val) }
+    setTimeout(() => { try { input.focus() } catch(e) {} }, 150)
+    const cleanup = (val) => { try { document.documentElement.removeChild(overlay) } catch(e) {} resolve(val) }
     overlay.querySelector('#_gh-token-cancel').addEventListener('click', () => cleanup(null))
     overlay.querySelector('#_gh-token-ok').addEventListener('click', () => cleanup(input.value.trim() || null))
     input.addEventListener('keydown', e => { if (e.key === 'Enter') overlay.querySelector('#_gh-token-ok').click() })
