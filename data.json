@@ -2777,7 +2777,7 @@
       "x": 294,
       "y": 194,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-13",
@@ -2897,7 +2897,7 @@
       "x": 223,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL",
+      "status": "OCUPADA",
       "obs": "Vaga aberta"
     },
     {
@@ -6651,7 +6651,7 @@
       "email": "ana.ether@srmasset.com",
       "device": "DESKTOP",
       "status": "ATIVO",
-      "mesa_id": "V-12"
+      "mesa_id": "V-27"
     },
     {
       "id": "c1793200417764_227",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898048739
+  "savedAt": 1793898055064
 }
