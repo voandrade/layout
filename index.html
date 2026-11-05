@@ -323,9 +323,11 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
   #floor-stats-wrap { display: none !important; }
   #floor-stats-reopen { display: flex !important; }
 
-  /* Legenda compacta */
-  .legend { gap: 8px; padding: 6px 10px; font-size: 10px; }
+  /* Legenda compacta — mantém botões de ação visíveis */
+  .legend { gap: 6px; padding: 6px 10px; font-size: 10px; }
   .legend-item span { display: none; }
+  /* Garante que sync-btn e mode-btn apareçam no tablet */
+  #sync-btn, #mode-btn, #delete-floor-btn { flex-shrink: 0; }
 
   /* Header compacto */
   header { padding: 0 14px; }
@@ -5192,6 +5194,10 @@ function _finishInit() {
   initMiniMapClick()
   rebuildAreaSelect()
   updateZoomLabel()
+  // Esconde coluna direita automaticamente em tablet e mobile
+  if (window.innerWidth <= 1180) {
+    _floorStatsVisible = false
+  }
 }
 
 // Aplica dados de usuários embutidos pelo admin antes do login,
