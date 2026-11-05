@@ -494,26 +494,27 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
 <body>
 
 <!-- ── Admin Login Modal ── -->
-<!-- Modal: Chave do GitHub -->
+<!-- Modal: Publicar no GitHub -->
 <div class="overlay" id="gh-token-modal" style="display:none" onclick="if(event.target===this)closeGhTokenModal()">
-  <div class="modal" style="width:400px;">
+  <div class="modal" style="width:420px;max-width:95vw;">
     <div class="modal-header">
-      <span class="modal-title">🔑 Chave do GitHub</span>
+      <span class="modal-title">☁ Publicar no GitHub</span>
       <button class="modal-close" onclick="closeGhTokenModal()">×</button>
     </div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 16px;">
-      Para que suas alterações sejam visíveis para todos os usuários, informe sua chave de acesso do GitHub (Personal Access Token).<br><br>
-      A chave será salva neste navegador e não precisará ser informada novamente.
+    <p style="font-size:12px;color:#6b7280;line-height:1.55;margin:0 0 14px;">
+      As alterações são salvas no repositório do GitHub e ficam visíveis para todos os usuários ao abrir a página.<br>
+      Use um token <strong>fine-grained</strong> com permissão <strong>Contents: Read and write</strong> neste repositório.
     </p>
     <div>
-      <label class="field-label">Personal Access Token</label>
-      <input class="field-input" id="gh-token-input" type="password" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+      <label class="field-label">Token do GitHub</label>
+      <input class="field-input" id="gh-token-input" type="password" placeholder="github_pat_…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
         onkeydown="if(event.key==='Enter')salvarGhToken()" />
     </div>
-    <div class="error-box" id="gh-token-error" style="display:none">Token inválido. Verifique e tente novamente.</div>
-    <div class="modal-footer">
+    <div class="error-box" id="gh-token-error" style="display:none"></div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:6px;">
+      <button class="btn danger" id="gh-disconnect-btn" style="display:none;margin-right:auto;" onclick="ghDesconectar()">Desconectar</button>
       <button class="btn" onclick="closeGhTokenModal()">Cancelar</button>
-      <button class="btn primary" onclick="salvarGhToken()">Salvar e publicar</button>
+      <button class="btn primary" id="gh-save-btn" onclick="salvarGhToken()">Testar e salvar</button>
     </div>
   </div>
 </div>
@@ -4875,38 +4876,66 @@ function resetGitHubToken() {
 }
 
 function openGhTokenModal() {
+  const temToken = !!getGitHubToken()
   const inp = document.getElementById('gh-token-input')
-  if (inp) inp.value = ''
+  inp.value = ''
+  inp.placeholder = temToken ? 'Token já salvo neste navegador (deixe em branco para manter)' : 'github_pat_…'
   document.getElementById('gh-token-error').style.display = 'none'
+  document.getElementById('gh-disconnect-btn').style.display = temToken ? '' : 'none'
   document.getElementById('gh-token-modal').style.display = 'flex'
-  setTimeout(() => { try { inp.focus() } catch(e) {} }, 50)
+  setTimeout(() => { try { inp.focus() } catch(e) {} }, 60)
 }
 
 function closeGhTokenModal() {
   document.getElementById('gh-token-modal').style.display = 'none'
 }
 
+function _ghTokenErr(msg) {
+  const e = document.getElementById('gh-token-error')
+  e.textContent = msg; e.style.display = 'block'
+}
+
 async function salvarGhToken() {
-  const inp = document.getElementById('gh-token-input')
-  const token = inp ? inp.value.trim() : ''
-  if (!token) { document.getElementById('gh-token-error').style.display = ''; return }
+  const tokenAtual = getGitHubToken()
+  const val = document.getElementById('gh-token-input').value.trim()
+  const token = val || tokenAtual
+  if (!token) return _ghTokenErr('Cole o token do GitHub.')
+  const btn = document.getElementById('gh-save-btn')
+  btn.disabled = true; btn.textContent = 'Testando…'
   document.getElementById('gh-token-error').style.display = 'none'
-  setGitHubToken(token)
+  try {
+    // Valida o token consultando o repositório antes de salvar
+    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' },
+      cache: 'no-store'
+    })
+    if (r.status === 401) return _ghTokenErr('Token inválido ou expirado.')
+    if (r.status === 404) return _ghTokenErr('Repositório não encontrado. Verifique se o token tem acesso a ' + GITHUB_REPO + '.')
+    if (!r.ok) return _ghTokenErr('GitHub respondeu ' + r.status + '.')
+    const j = await r.json()
+    if (j.permissions && j.permissions.push === false) return _ghTokenErr('O token não tem permissão de escrita. Use Contents: Read and write.')
+    // Token válido: salva e publica
+    btn.textContent = 'Publicando…'
+    setGitHubToken(token)
+    closeGhTokenModal()
+    atualizarBannerToken()
+    await publishToGitHub()
+    showToast('✓ Publicação ativada neste navegador.', 'success')
+  } catch(e) { _ghTokenErr('Falha de rede ao falar com o GitHub.') }
+  finally { btn.disabled = false; btn.textContent = 'Testar e salvar' }
+}
+
+function ghDesconectar() {
+  if (!confirm('Remover o token de publicação deste navegador?')) return
+  localStorage.removeItem(GITHUB_TOKEN_KEY)
   closeGhTokenModal()
   atualizarBannerToken()
-  showToast('Chave salva! Publicando alterações…', 'success')
-  await publishToGitHub()
+  setSyncState('unlinked')
+  showToast('Publicação desconectada neste navegador.', 'success')
 }
 
-function configurarTokenGitHub() {
-  openGhTokenModal()
-}
-
-// Mantido para compatibilidade com chamadas legadas
-function askGitHubToken() {
-  openGhTokenModal()
-  return null  // retorno imediato; o fluxo continua via salvarGhToken()
-}
+function configurarTokenGitHub() { openGhTokenModal() }
+function askGitHubToken() { openGhTokenModal(); return null }
 
 function atualizarBannerToken() {
   if (!isGitHubPages()) return
