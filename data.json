@@ -2641,7 +2641,7 @@
       "x": 310,
       "y": 103,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "T-30",
@@ -2649,7 +2649,7 @@
       "x": 310,
       "y": 156,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "T-31",
@@ -7026,7 +7026,7 @@
       "email": "jussara.gomes@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "T-29"
+      "mesa_id": "T-30"
     },
     {
       "id": "c1793212142470",
@@ -8828,7 +8828,10 @@
     "RH|RH Tech": "#1098AD",
     "RH|RH Tech|BP": "#1098ad",
     "—": "#d6336c",
-    "Comercial SRM|Comercial Cartões|SP7": "#e03131"
+    "Comercial SRM|Comercial Cartões|SP7": "#e03131",
+    "Estratégico": "#9c36b5",
+    "Tecnologia": "#f08c00",
+    "Comercial SRM": "#0ca678"
   },
   "employeeBase": [
     {
@@ -15521,5 +15524,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898693208
+  "savedAt": 1793898810950
 }
