@@ -323,18 +323,39 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
   #floor-stats-wrap { display: none !important; }
   #floor-stats-reopen { display: flex !important; }
 
-  /* Legenda compacta — mantém botões de ação visíveis */
-  .legend { gap: 6px; padding: 6px 10px; font-size: 10px; }
+  /* Header: esconde abas de andar, mostra só logo + user badge */
+  header { padding: 0 14px; height: 52px; }
+  .floor-tabs { display: none !important; }
+
+  /* Faixa de andares abaixo do header — botões grandes fáceis de tocar */
+  .floor-strip {
+    display: flex !important;
+    background: var(--color-header-start);
+    padding: 8px 12px;
+    gap: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .floor-strip::-webkit-scrollbar { display: none; }
+  .floor-strip .floor-btn {
+    display: inline-flex !important;
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 36px;
+    border-radius: 8px;
+  }
+
+  /* Legenda compacta — só ícones + botões de ação */
+  .legend { gap: 6px; padding: 6px 10px; font-size: 10px; overflow-x: auto; flex-wrap: nowrap; }
   .legend-item span { display: none; }
-  /* Garante que sync-btn e mode-btn apareçam no tablet */
-  #sync-btn, #mode-btn, #delete-floor-btn { flex-shrink: 0; }
+  .legend strong { display: none; }
 
-  /* Header compacto */
-  header { padding: 0 14px; }
-  .floor-tabs { gap: 2px; }
-  .floor-tab { padding: 4px 10px; font-size: 11px; }
+  /* Botões de ação com tamanho confortável para toque */
+  #sync-btn, #mode-btn, #delete-floor-btn { flex-shrink: 0; min-height: 32px; padding: 4px 10px; font-size: 11px; }
 
-  /* Zoom controls menores */
+  /* Zoom controls */
   .zoom-controls { gap: 4px; }
 
   /* Modais adaptados */
