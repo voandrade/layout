@@ -4683,14 +4683,14 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ desks, collaborators, currentFloor, floorLabels: FLOOR_LABEL, areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now() }))
     _unsavedChanges = true
   } catch(e) { console.warn('Save failed:', e) }
-  // Publicar no arquivo HTML — se não vinculado, solicita vinculação automaticamente
-  getSyncHandle().then(h => {
-    if (h) {
-      syncToFile()
-    } else {
-      showSyncPrompt()
-    }
-  })
+  // No GitHub Pages: salva automaticamente no data.json via API ao publicar (botão manual)
+  // Localmente: se já vinculado, grava; senão solicita vinculação
+  if (!isGitHubPages()) {
+    getSyncHandle().then(h => {
+      if (h) syncToFile()
+      else showSyncPrompt()
+    })
+  }
 }
 
 let _unsavedChanges = false
