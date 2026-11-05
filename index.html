@@ -494,6 +494,30 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
 <body>
 
 <!-- ── Admin Login Modal ── -->
+<!-- Modal: Chave do GitHub -->
+<div class="overlay" id="gh-token-modal" style="display:none" onclick="if(event.target===this)closeGhTokenModal()">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <span class="modal-title">🔑 Chave do GitHub</span>
+      <button class="modal-close" onclick="closeGhTokenModal()">×</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 16px;">
+      Para que suas alterações sejam visíveis para todos os usuários, informe sua chave de acesso do GitHub (Personal Access Token).<br><br>
+      A chave será salva neste navegador e não precisará ser informada novamente.
+    </p>
+    <div>
+      <label class="field-label">Personal Access Token</label>
+      <input class="field-input" id="gh-token-input" type="password" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+        onkeydown="if(event.key==='Enter')salvarGhToken()" />
+    </div>
+    <div class="error-box" id="gh-token-error" style="display:none">Token inválido. Verifique e tente novamente.</div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeGhTokenModal()">Cancelar</button>
+      <button class="btn primary" onclick="salvarGhToken()">Salvar e publicar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="admin-login-modal" style="display:none" onclick="if(event.target===this)closeAdminLoginModal()">
   <div class="modal" style="width:360px;">
     <div class="modal-header">
@@ -4845,32 +4869,49 @@ function setGitHubToken(token) {
   localStorage.setItem(GITHUB_TOKEN_KEY, token.trim())
 }
 
-async function resetGitHubToken() {
+function resetGitHubToken() {
   localStorage.removeItem(GITHUB_TOKEN_KEY)
-  const token = await askGitHubToken()
-  if (token) { setGitHubToken(token); showToast('Chave do GitHub atualizada.', 'success') }
+  openGhTokenModal()
 }
 
-function askGitHubToken() {
-  const val = prompt('Cole sua chave do GitHub (Personal Access Token).\n\nEla será salva neste navegador e não precisará ser informada novamente.')
-  return val ? val.trim() : null
+function openGhTokenModal() {
+  const inp = document.getElementById('gh-token-input')
+  if (inp) inp.value = ''
+  document.getElementById('gh-token-error').style.display = 'none'
+  document.getElementById('gh-token-modal').style.display = 'flex'
+  setTimeout(() => { try { inp.focus() } catch(e) {} }, 50)
+}
+
+function closeGhTokenModal() {
+  document.getElementById('gh-token-modal').style.display = 'none'
+}
+
+async function salvarGhToken() {
+  const inp = document.getElementById('gh-token-input')
+  const token = inp ? inp.value.trim() : ''
+  if (!token) { document.getElementById('gh-token-error').style.display = ''; return }
+  document.getElementById('gh-token-error').style.display = 'none'
+  setGitHubToken(token)
+  closeGhTokenModal()
+  atualizarBannerToken()
+  showToast('Chave salva! Publicando alterações…', 'success')
+  await publishToGitHub()
 }
 
 function configurarTokenGitHub() {
-  // Chamado diretamente de um clique — prompt() garantido no Safari iOS
-  const token = askGitHubToken()
-  if (!token) return
-  setGitHubToken(token)
-  document.getElementById('gh-token-banner').style.display = 'none'
-  showToast('Chave salva! Publicando alterações…', 'success')
-  publishToGitHub()
+  openGhTokenModal()
+}
+
+// Mantido para compatibilidade com chamadas legadas
+function askGitHubToken() {
+  openGhTokenModal()
+  return null  // retorno imediato; o fluxo continua via salvarGhToken()
 }
 
 function atualizarBannerToken() {
   if (!isGitHubPages()) return
   const banner = document.getElementById('gh-token-banner')
   if (!banner) return
-  // Mostra banner apenas para admins sem token configurado
   const semToken = !getGitHubToken()
   const isAdmin = currentUser && currentUser.role === 'admin'
   banner.style.display = (semToken && isAdmin) ? 'flex' : 'none'
@@ -4880,9 +4921,10 @@ async function publishToGitHub() {
   setSyncState('saving')
   let token = getGitHubToken()
   if (!token) {
-    token = await askGitHubToken()
-    if (!token) { setSyncState('unlinked'); return }
-    setGitHubToken(token)
+    // Sem token: abre modal para o usuário informar; publicação acontece via salvarGhToken()
+    setSyncState('unlinked')
+    openGhTokenModal()
+    return
   }
 
   const payload = { desks, collaborators, floorLabels: FLOOR_LABEL,
