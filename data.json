@@ -2906,7 +2906,7 @@
       "x": 294,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-29",
@@ -2914,7 +2914,7 @@
       "x": 365,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-30",
@@ -6666,7 +6666,7 @@
       "email": "jeniffer.padilha@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-29"
+      "mesa_id": "V-28"
     },
     {
       "id": "c1793200417764_228",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898059013
+  "savedAt": 1793898062400
 }
