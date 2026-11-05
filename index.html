@@ -619,11 +619,22 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
           <div class="floor-label" id="floor-label">1º Andar</div>
         </div>
       </div>
-      <div id="floor-stats-wrap" style="display:none;flex-direction:column;flex-shrink:0;position:relative;">
-        <button id="floor-stats-toggle" onclick="toggleFloorStats()" title="Esconder visão geral"
-          style="position:absolute;left:-14px;top:50%;transform:translateY(-50%);z-index:10;width:14px;height:40px;border:1px solid var(--border);border-right:none;background:#f8f9fc;cursor:pointer;border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:center;padding:0;color:var(--muted);font-size:9px;line-height:1;">›</button>
-        <div id="floor-stats" style="width:340px;min-width:340px;border-left:1px solid var(--border);background:#f8f9fc;overflow-y:auto;font-size:13px;height:100%;"></div>
+      <div id="floor-stats-wrap" style="display:none;flex-direction:column;flex-shrink:0;border-left:1px solid var(--border);width:340px;min-width:340px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);background:#f1f3f9;flex-shrink:0;">
+          <span style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;">Visão Geral</span>
+          <button id="floor-stats-toggle" onclick="toggleFloorStats()" title="Esconder painel"
+            style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;padding:2px 7px;font-size:11px;color:var(--muted);line-height:1.4;display:flex;align-items:center;gap:4px;">
+            <svg id="floor-stats-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+            Esconder
+          </button>
+        </div>
+        <div id="floor-stats" style="overflow-y:auto;font-size:13px;flex:1;"></div>
       </div>
+      <!-- Botão para reabrir o painel quando fechado -->
+      <button id="floor-stats-reopen" onclick="toggleFloorStats()" title="Mostrar visão geral"
+        style="display:none;flex-shrink:0;align-self:center;border:1px solid var(--border);border-radius:6px;background:#f8f9fc;cursor:pointer;padding:6px 4px;color:var(--muted);writing-mode:vertical-rl;font-size:10px;font-weight:600;letter-spacing:.05em;gap:4px;align-items:center;">
+        ▶ Visão Geral
+      </button>
     </div>
     <div class="legend">
       <strong style="color:var(--text);">Legenda:</strong>
@@ -2408,20 +2419,15 @@ let _floorStatsVisible = true
 
 function toggleFloorStats() {
   _floorStatsVisible = !_floorStatsVisible
-  const wrap = document.getElementById('floor-stats-wrap')
-  const btn  = document.getElementById('floor-stats-toggle')
-  const inner = document.getElementById('floor-stats')
+  const wrap   = document.getElementById('floor-stats-wrap')
+  const reopen = document.getElementById('floor-stats-reopen')
   if (!wrap) return
   if (_floorStatsVisible) {
-    inner.style.display = ''
-    btn.textContent = '›'
-    btn.title = 'Esconder visão geral'
-    wrap.style.width = ''
+    wrap.style.display = 'flex'
+    if (reopen) reopen.style.display = 'none'
   } else {
-    inner.style.display = 'none'
-    btn.textContent = '‹'
-    btn.title = 'Mostrar visão geral'
-    wrap.style.width = '14px'
+    wrap.style.display = 'none'
+    if (reopen) reopen.style.display = 'flex'
   }
 }
 
@@ -2459,9 +2465,10 @@ function renderFloorStats() {
     </span>`
   }).join('')
 
-  wrap.style.display = 'flex'
-  wrap.style.width = _floorStatsVisible ? '' : '14px'
-  bar.style.display = _floorStatsVisible ? 'flex' : 'none'
+  const reopen = document.getElementById('floor-stats-reopen')
+  wrap.style.display = _floorStatsVisible ? 'flex' : 'none'
+  if (reopen) reopen.style.display = _floorStatsVisible ? 'none' : 'flex'
+  bar.style.display = 'flex'
   bar.style.flexDirection = 'column'
   bar.style.padding = '0'
   bar.style.gap = '0'
