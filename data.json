@@ -2777,7 +2777,7 @@
       "x": 294,
       "y": 194,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-13",
@@ -2914,7 +2914,7 @@
       "x": 365,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-30",
@@ -3012,7 +3012,7 @@
       "x": 365.00000000000006,
       "y": 561.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-42",
@@ -3044,7 +3044,7 @@
       "x": 223.0000000000001,
       "y": 614.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-46",
@@ -5900,7 +5900,7 @@
       "email": "kethlyn.gomes@srmasset.com",
       "device": "DESKTOP",
       "status": "ATIVO",
-      "mesa_id": "V-41",
+      "mesa_id": "V-45",
       "divisao": "JK"
     },
     {
@@ -7116,7 +7116,7 @@
       "email": "",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-12"
+      "mesa_id": "V-29"
     },
     {
       "id": "c1793218921406",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898062400
+  "savedAt": 1793898195638
 }
