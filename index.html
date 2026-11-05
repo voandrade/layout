@@ -4683,9 +4683,11 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ desks, collaborators, currentFloor, floorLabels: FLOOR_LABEL, areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now() }))
     _unsavedChanges = true
   } catch(e) { console.warn('Save failed:', e) }
-  // No GitHub Pages: salva automaticamente no data.json via API ao publicar (botão manual)
-  // Localmente: se já vinculado, grava; senão solicita vinculação
-  if (!isGitHubPages()) {
+  // GitHub Pages: publica automaticamente após 4s de inatividade se token já estiver salvo
+  if (isGitHubPages()) {
+    scheduleAutoPublish()
+  } else {
+    // Local: se já vinculado, grava; senão solicita vinculação
     getSyncHandle().then(h => {
       if (h) syncToFile()
       else showSyncPrompt()
@@ -4694,6 +4696,21 @@ function saveState() {
 }
 
 let _unsavedChanges = false
+let _autoPublishTimer = null
+function scheduleAutoPublish() {
+  if (_autoPublishTimer) clearTimeout(_autoPublishTimer)
+  // Se ainda não tem token, pede agora (prompt() só funciona no contexto síncrono/direto, não em setTimeout no Safari iOS)
+  if (!getGitHubToken()) {
+    const token = askGitHubToken()
+    if (!token) { setSyncState('unlinked'); return }
+    setGitHubToken(token)
+  }
+  setSyncState('pending')
+  _autoPublishTimer = setTimeout(async () => {
+    _autoPublishTimer = null
+    await publishToGitHub()
+  }, 4000)
+}
 const changeLog = []
 const MAX_LOG = 50
 function logAction(action, detail) {
@@ -4823,35 +4840,15 @@ async function resetGitHubToken() {
   if (token) { setGitHubToken(token); showToast('Chave do GitHub atualizada.', 'success') }
 }
 
-async function askGitHubToken() {
-  return new Promise(resolve => {
-    // Cria modal inline para pedir o token
-    const overlay = document.createElement('div')
-    // Usando top/left/right/bottom em vez de inset para compatibilidade com Safari iOS
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;-webkit-overflow-scrolling:touch;'
-    overlay.innerHTML = `
-      <div style="background:white;border-radius:12px;padding:28px 24px;width:380px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,30,.2);position:relative;">
-        <div style="font-size:15px;font-weight:600;color:#101828;margin-bottom:6px;">Chave do GitHub</div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.5;">
-          Para publicar no GitHub Pages é necessário informar sua chave de acesso (Personal Access Token).<br>
-          Ela será salva no seu navegador e não aparecerá para outros usuários.
-        </div>
-        <input id="_gh-token-input" type="text" inputmode="text" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;outline:none;margin-bottom:14px;font-family:monospace;">
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button id="_gh-token-cancel" style="padding:10px 18px;border:1px solid #d1d5db;border-radius:7px;background:white;cursor:pointer;font-size:14px;color:#374151;">Cancelar</button>
-          <button id="_gh-token-ok" style="padding:10px 18px;border:none;border-radius:7px;background:#1D3F80;color:white;cursor:pointer;font-size:14px;font-weight:600;">Confirmar</button>
-        </div>
-      </div>`
-    // Usa documentElement em vez de body para contornar bug do Safari iOS com overflow:hidden no body
-    document.documentElement.appendChild(overlay)
-    const input = overlay.querySelector('#_gh-token-input')
-    setTimeout(() => { try { input.focus() } catch(e) {} }, 150)
-    const cleanup = (val) => { try { document.documentElement.removeChild(overlay) } catch(e) {} resolve(val) }
-    overlay.querySelector('#_gh-token-cancel').addEventListener('click', () => cleanup(null))
-    overlay.querySelector('#_gh-token-ok').addEventListener('click', () => cleanup(input.value.trim() || null))
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') overlay.querySelector('#_gh-token-ok').click() })
-  })
+function askGitHubToken() {
+  // prompt() nativo funciona garantidamente em todos os browsers incluindo Safari iOS
+  const val = prompt('Cole sua chave do GitHub (Personal Access Token).\n\nEla será salva neste navegador e não precisará ser informada novamente.')
+  return val ? val.trim() : null
+}
+
+// Versão async para manter compatibilidade com quem chama com await
+async function askGitHubTokenAsync() {
+  return askGitHubToken()
 }
 
 async function publishToGitHub() {
@@ -5060,10 +5057,11 @@ function setSyncState(state) {
   const pubLabel = ghPages ? '☁ Publicar' : '🔗 Publicar'
   const pubTitle = ghPages ? 'Publicar alterações no GitHub (data.json)' : 'Vincular o arquivo HTML e publicar alterações'
   const S = {
-    unlinked: { html: pubLabel,     color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title: pubTitle },
-    saving:   { html:'⟳ Salvando…', color:'#6b7280', bg:'#f9fafb', border:'#e5e7eb', cursor:'default', title:'Salvando…' },
-    synced:   { html:'✓ Publicado', color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'default', title:'Alterações publicadas — todos os usuários verão ao abrir a página' },
-    error:    { html:'✗ Publicar',  color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao publicar. Clique para tentar novamente.' },
+    unlinked: { html: pubLabel,        color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title: pubTitle },
+    pending:  { html:'● Aguardando…',  color:'#92400e', bg:'#fffbeb', border:'#fde68a', cursor:'default', title:'Publicando em breve…' },
+    saving:   { html:'⟳ Salvando…',   color:'#6b7280', bg:'#f9fafb', border:'#e5e7eb', cursor:'default', title:'Salvando…' },
+    synced:   { html:'✓ Publicado',    color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'default', title:'Alterações publicadas — todos os usuários verão ao abrir a página' },
+    error:    { html:'✗ Publicar',     color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao publicar. Clique para tentar novamente.' },
   }
   const s = S[state] ?? S.unlinked
   btn.innerHTML = s.html; btn.style.color = s.color; btn.style.background = s.bg
