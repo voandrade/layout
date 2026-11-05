@@ -4781,14 +4781,13 @@ function loadEmbeddedData() {
 const GITHUB_REPO  = 'voandrade/layout'
 const GITHUB_FILE  = 'data.json'
 const GITHUB_TOKEN_KEY = 'layout-srm-gh-token'
-const GITHUB_TOKEN_DEFAULT = atob('Z2l0aHViX3BhdF8xMUNIS1RMNVEwOERBTmxMa2k1ZnpVX0NNU1dLanlyRVdubGgwbU5QWjJZc2thZU5Xd1VhQ2lndE1pWUZjd2FSWFkyTU9aQ0NaajZxZ0FNWQo=').trim()
 
 function isGitHubPages() {
   return location.hostname.endsWith('github.io') || location.hostname === 'github.io'
 }
 
 function getGitHubToken() {
-  return localStorage.getItem(GITHUB_TOKEN_KEY) || GITHUB_TOKEN_DEFAULT
+  return localStorage.getItem(GITHUB_TOKEN_KEY) || ''
 }
 
 function setGitHubToken(token) {
