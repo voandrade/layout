@@ -2641,7 +2641,7 @@
       "x": 310,
       "y": 103,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "T-30",
@@ -2649,7 +2649,7 @@
       "x": 310,
       "y": 156,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "T-31",
@@ -7026,7 +7026,7 @@
       "email": "jussara.gomes@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "T-30"
+      "mesa_id": "T-29"
     },
     {
       "id": "c1793212142470",
@@ -15521,5 +15521,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793899555009
+  "savedAt": 1793900321534
 }
