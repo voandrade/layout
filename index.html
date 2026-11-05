@@ -604,6 +604,12 @@ body:not(.role-admin) #delete-floor-btn { display: none !important; }
   👁 MODO VISUALIZAÇÃO — Você está em modo somente leitura
 </div>
 
+<!-- Banner de configuração do token (GitHub Pages, sem token salvo) -->
+<div id="gh-token-banner" style="display:none;background:#92400e;color:white;text-align:center;font-size:12px;font-weight:500;padding:8px 16px;flex-shrink:0;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
+  <span>⚠ Suas alterações não estão sendo salvas para outros usuários.</span>
+  <button onclick="configurarTokenGitHub()" style="background:white;color:#92400e;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Configurar agora</button>
+</div>
+
 <!-- Body -->
 <div class="app-body">
 
@@ -1430,7 +1436,12 @@ function applySession() {
   else { renderSidebar(); renderMap(); }
   // Verificar status do arquivo vinculado (apenas admin)
   if (currentUser.role === 'admin') {
-    getSyncHandle().then(h => setSyncState(h ? 'synced' : 'unlinked'))
+    if (isGitHubPages()) {
+      atualizarBannerToken()
+      setSyncState(getGitHubToken() ? 'synced' : 'unlinked')
+    } else {
+      getSyncHandle().then(h => setSyncState(h ? 'synced' : 'unlinked'))
+    }
   }
 }
 
@@ -4698,13 +4709,13 @@ function saveState() {
 let _unsavedChanges = false
 let _autoPublishTimer = null
 function scheduleAutoPublish() {
-  if (_autoPublishTimer) clearTimeout(_autoPublishTimer)
-  // Se ainda não tem token, pede agora (prompt() só funciona no contexto síncrono/direto, não em setTimeout no Safari iOS)
   if (!getGitHubToken()) {
-    const token = askGitHubToken()
-    if (!token) { setSyncState('unlinked'); return }
-    setGitHubToken(token)
+    // Sem token: mostra banner para o usuário configurar com um toque
+    atualizarBannerToken()
+    setSyncState('unlinked')
+    return
   }
+  if (_autoPublishTimer) clearTimeout(_autoPublishTimer)
   setSyncState('pending')
   _autoPublishTimer = setTimeout(async () => {
     _autoPublishTimer = null
@@ -4841,14 +4852,28 @@ async function resetGitHubToken() {
 }
 
 function askGitHubToken() {
-  // prompt() nativo funciona garantidamente em todos os browsers incluindo Safari iOS
   const val = prompt('Cole sua chave do GitHub (Personal Access Token).\n\nEla será salva neste navegador e não precisará ser informada novamente.')
   return val ? val.trim() : null
 }
 
-// Versão async para manter compatibilidade com quem chama com await
-async function askGitHubTokenAsync() {
-  return askGitHubToken()
+function configurarTokenGitHub() {
+  // Chamado diretamente de um clique — prompt() garantido no Safari iOS
+  const token = askGitHubToken()
+  if (!token) return
+  setGitHubToken(token)
+  document.getElementById('gh-token-banner').style.display = 'none'
+  showToast('Chave salva! Publicando alterações…', 'success')
+  publishToGitHub()
+}
+
+function atualizarBannerToken() {
+  if (!isGitHubPages()) return
+  const banner = document.getElementById('gh-token-banner')
+  if (!banner) return
+  // Mostra banner apenas para admins sem token configurado
+  const semToken = !getGitHubToken()
+  const isAdmin = currentUser && currentUser.role === 'admin'
+  banner.style.display = (semToken && isAdmin) ? 'flex' : 'none'
 }
 
 async function publishToGitHub() {
