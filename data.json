@@ -3012,7 +3012,7 @@
       "x": 365.00000000000006,
       "y": 561.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-42",
@@ -3020,7 +3020,7 @@
       "x": 436.00000000000006,
       "y": 561.1056241426612,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA"
+      "status": "DISPONIVEL"
     },
     {
       "id": "V-43",
@@ -5915,7 +5915,7 @@
       "email": "lucianamb.consult@srmasset.com",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-42",
+      "mesa_id": "V-41",
       "divisao": "JK"
     },
     {
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898425268
+  "savedAt": 1793898438729
 }
