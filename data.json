@@ -2897,7 +2897,7 @@
       "x": 223,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "OCUPADA",
+      "status": "DISPONIVEL",
       "obs": "Vaga aberta"
     },
     {
@@ -2906,7 +2906,7 @@
       "x": 294,
       "y": 421.5212620027434,
       "tipo": "HIBRIDO",
-      "status": "DISPONIVEL"
+      "status": "OCUPADA"
     },
     {
       "id": "V-29",
@@ -7116,7 +7116,7 @@
       "email": "",
       "device": "NOTEBOOK",
       "status": "ATIVO",
-      "mesa_id": "V-27"
+      "mesa_id": "V-28"
     },
     {
       "id": "c1793218921406",
@@ -15506,5 +15506,5 @@
     "fileName": "SRM_Colaboradores_Completo_2026-10-28.csv",
     "count": 557
   },
-  "savedAt": 1793898042898
+  "savedAt": 1793898048739
 }
