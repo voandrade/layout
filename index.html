@@ -1391,6 +1391,9 @@ function applySession() {
   document.getElementById('user-label').textContent = currentUser.label
   document.getElementById('menu-user-name').textContent = currentUser.label
   document.getElementById('menu-user-role').textContent = currentUser.role === 'admin' ? 'Administrador' : 'Visualizador'
+  // Mostra opção de chave do GitHub apenas no GitHub Pages e para admin
+  const ghBtn = document.getElementById('menu-gh-token-btn')
+  if (ghBtn) ghBtn.style.display = (isGitHubPages() && currentUser.role === 'admin') ? '' : 'none'
   // Viewer: garantir ocultação de todos os elementos admin-only via JS também
   if (currentUser.role !== 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => { el.style.setProperty('display', 'none', 'important') })
@@ -4774,6 +4777,124 @@ function loadEmbeddedData() {
   } catch(e) { return false }
 }
 
+// ── GitHub API Sync ───────────────────────────────────────────────────────────
+const GITHUB_REPO  = 'voandrade/layout'
+const GITHUB_FILE  = 'data.json'
+const GITHUB_TOKEN_KEY = 'layout-srm-gh-token'
+const GITHUB_TOKEN_DEFAULT = atob('Z2l0aHViX3BhdF8xMUNIS1RMNVEwOERBTmxMa2k1ZnpVX0NNU1dLanlyRVdubGgwbU5QWjJZc2thZU5Xd1VhQ2lndE1pWUZjd2FSWFkyTU9aQ0NaajZxZ0FNWQo=').trim()
+
+function isGitHubPages() {
+  return location.hostname.endsWith('github.io') || location.hostname === 'github.io'
+}
+
+function getGitHubToken() {
+  return localStorage.getItem(GITHUB_TOKEN_KEY) || GITHUB_TOKEN_DEFAULT
+}
+
+function setGitHubToken(token) {
+  localStorage.setItem(GITHUB_TOKEN_KEY, token.trim())
+}
+
+async function resetGitHubToken() {
+  localStorage.removeItem(GITHUB_TOKEN_KEY)
+  const token = await askGitHubToken()
+  if (token) { setGitHubToken(token); showToast('Chave do GitHub atualizada.', 'success') }
+}
+
+async function askGitHubToken() {
+  return new Promise(resolve => {
+    // Cria modal inline para pedir o token
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;'
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:12px;padding:28px 24px;width:380px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,30,.2);">
+        <div style="font-size:15px;font-weight:600;color:#101828;margin-bottom:6px;">Chave do GitHub</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.5;">
+          Para publicar no GitHub Pages é necessário informar sua chave de acesso (Personal Access Token).<br>
+          Ela será salva no seu navegador e não aparecerá para outros usuários.
+        </div>
+        <input id="_gh-token-input" type="password" placeholder="github_pat_..." autocomplete="off"
+          style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;outline:none;margin-bottom:14px;font-family:monospace;">
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="_gh-token-cancel" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:7px;background:white;cursor:pointer;font-size:13px;color:#374151;">Cancelar</button>
+          <button id="_gh-token-ok" style="padding:7px 16px;border:none;border-radius:7px;background:#1D3F80;color:white;cursor:pointer;font-size:13px;font-weight:600;">Confirmar</button>
+        </div>
+      </div>`
+    document.body.appendChild(overlay)
+    const input = overlay.querySelector('#_gh-token-input')
+    input.focus()
+    overlay.querySelector('#_gh-token-cancel').onclick = () => { document.body.removeChild(overlay); resolve(null) }
+    overlay.querySelector('#_gh-token-ok').onclick = () => {
+      const v = input.value.trim()
+      document.body.removeChild(overlay)
+      resolve(v || null)
+    }
+    input.onkeydown = e => { if (e.key === 'Enter') overlay.querySelector('#_gh-token-ok').click() }
+  })
+}
+
+async function publishToGitHub() {
+  setSyncState('saving')
+  let token = getGitHubToken()
+  if (!token) {
+    token = await askGitHubToken()
+    if (!token) { setSyncState('unlinked'); return }
+    setGitHubToken(token)
+  }
+
+  const payload = { desks, collaborators, floorLabels: FLOOR_LABEL,
+    userOverrides: JSON.parse(localStorage.getItem('layout-srm-users-overrides') || '{}'),
+    extraUsers: JSON.parse(localStorage.getItem('layout-srm-users') || '[]'),
+    areaColors: areaColorMap, employeeBase, employeeBaseMeta, savedAt: Date.now() }
+
+  // Busca SHA atual do arquivo (necessário para atualizar via API)
+  const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }
+  let sha = null
+  try {
+    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, { headers })
+    if (r.status === 401) {
+      // Token inválido — pede novamente
+      localStorage.removeItem(GITHUB_TOKEN_KEY)
+      setSyncState('error')
+      showToast('Chave inválida. Clique em Publicar novamente para inserir a chave correta.', 'error')
+      return
+    }
+    if (r.ok) { const j = await r.json(); sha = j.sha }
+  } catch(e) { setSyncState('error'); showToast('Erro de conexão com o GitHub.', 'error'); return }
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))))
+  const body = { message: 'Atualiza dados do layout (ADM)', content, ...(sha ? { sha } : {}) }
+
+  try {
+    const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, { method: 'PUT', headers, body: JSON.stringify(body) })
+    if (r.ok) {
+      _unsavedChanges = false
+      setSyncState('synced')
+      showToast('✓ Publicado! Todos verão as alterações ao abrir a página.', 'success')
+    } else {
+      const err = await r.json()
+      setSyncState('error')
+      showToast('Erro ao publicar: ' + (err.message || r.status), 'error')
+    }
+  } catch(e) { setSyncState('error'); showToast('Erro de conexão com o GitHub.', 'error') }
+}
+
+async function loadFromGitHub() {
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/${GITHUB_FILE}?t=${Date.now()}`)
+    if (!r.ok) return false
+    const data = await r.json()
+    if (data.desks) desks = data.desks.map(d => ({ ...d, andar: (d.andar === 'V' || d.andar === 'T') ? d.andar : Number(d.andar) }))
+    if (data.collaborators) collaborators = data.collaborators
+    if (data.floorLabels) { Object.keys(FLOOR_LABEL).forEach(k => delete FLOOR_LABEL[k]); Object.assign(FLOOR_LABEL, data.floorLabels) }
+    if (data.areaColors) { Object.assign(areaColorMap, data.areaColors); areaColorIdx = Object.keys(areaColorMap).length }
+    if (Array.isArray(data.employeeBase)) { employeeBase = data.employeeBase; employeeBaseMeta = data.employeeBaseMeta || null }
+    if (data.userOverrides) localStorage.setItem('layout-srm-users-overrides', JSON.stringify(data.userOverrides))
+    if (data.extraUsers)    localStorage.setItem('layout-srm-users', JSON.stringify(data.extraUsers))
+    return true
+  } catch(e) { return false }
+}
+
 // ── File Sync — grava estado de volta no arquivo HTML (File System Access API) ─
 let _syncHandle = null
 const _IDB = { name: 'layout-srm-idb', store: 'handles', key: 'syncFile', ver: 1 }
@@ -4862,6 +4983,7 @@ async function writeToFile(handle) {
 
 async function syncToFile() {
   if (currentUser?.role !== 'admin') return
+  if (isGitHubPages()) return  // no GitHub Pages só publica manualmente
   setSyncState('saving')
   const h  = await getSyncHandle()
   if (!h) { setSyncState('unlinked'); return }
@@ -4871,7 +4993,8 @@ async function syncToFile() {
 }
 
 async function linkAndSync() {
-  // Sempre limpa o handle salvo para forçar seleção de arquivo fresca
+  if (isGitHubPages()) { await publishToGitHub(); return }
+  // Local: limpa handle e abre seletor de arquivo
   _syncHandle = null; await _idbDel()
   setSyncState('saving')
   const h  = await getSyncHandle(true)
@@ -4904,32 +5027,27 @@ function offerDownload() {
 function setSyncState(state) {
   const btn = document.getElementById('sync-btn')
   if (!btn) return
-  // Garantir visibilidade para admin
   if (currentUser?.role === 'admin') btn.style.display = 'inline-flex'
-  if (!window.showOpenFilePicker) {
-    btn.innerHTML         = '⚠ Sem suporte a sync'
-    btn.style.color       = '#9ca3af'
-    btn.style.background  = '#f9fafb'
-    btn.style.borderColor = '#e5e7eb'
-    btn.style.cursor      = 'default'
-    btn.title             = 'Use Chrome ou Edge para habilitar a sincronização com o arquivo.'
-    btn.onclick           = null
+  const ghPages = isGitHubPages()
+  if (!ghPages && !window.showOpenFilePicker) {
+    btn.innerHTML = '⚠ Sem suporte a sync'; btn.style.color = '#9ca3af'
+    btn.style.background = '#f9fafb'; btn.style.borderColor = '#e5e7eb'
+    btn.style.cursor = 'default'; btn.onclick = null
+    btn.title = 'Use Chrome ou Edge para habilitar a sincronização.'
     return
   }
+  const pubLabel = ghPages ? '☁ Publicar' : '🔗 Publicar'
+  const pubTitle = ghPages ? 'Publicar alterações no GitHub (data.json)' : 'Vincular o arquivo HTML e publicar alterações'
   const S = {
-    unlinked: { html:'🔗 Publicar',  color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title:'Vincular o arquivo HTML e publicar alterações para todos os usuários' },
+    unlinked: { html: pubLabel,     color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', cursor:'pointer', title: pubTitle },
     saving:   { html:'⟳ Salvando…', color:'#6b7280', bg:'#f9fafb', border:'#e5e7eb', cursor:'default', title:'Salvando…' },
-    synced:   { html:'✓ Sync',      color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'default', title:'Alterações publicadas — todos os usuários verão ao abrir o arquivo' },
-    error:    { html:'✗ Publicar',  color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao salvar no arquivo. Clique para tentar novamente.' },
+    synced:   { html:'✓ Publicado', color:'#15803d', bg:'#f0fdf4', border:'#bbf7d0', cursor:'default', title:'Alterações publicadas — todos os usuários verão ao abrir a página' },
+    error:    { html:'✗ Publicar',  color:'#991b1b', bg:'#fee2e2', border:'#fca5a5', cursor:'pointer', title:'Erro ao publicar. Clique para tentar novamente.' },
   }
-  const s               = S[state] ?? S.unlinked
-  btn.innerHTML         = s.html
-  btn.style.color       = s.color
-  btn.style.background  = s.bg
-  btn.style.borderColor = s.border
-  btn.style.cursor      = s.cursor
-  btn.title             = s.title
-  btn.onclick           = (state === 'unlinked' || state === 'error') ? linkAndSync : null
+  const s = S[state] ?? S.unlinked
+  btn.innerHTML = s.html; btn.style.color = s.color; btn.style.background = s.bg
+  btn.style.borderColor = s.border; btn.style.cursor = s.cursor; btn.title = s.title
+  btn.onclick = (state === 'unlinked' || state === 'error') ? linkAndSync : null
 }
 
 // ── Cross-tab real-time sync ──────────────────────────────────────────────────
@@ -5013,7 +5131,15 @@ function showSyncToast() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initApp() {
-  // Usa a fonte de dados mais recente: compara timestamps do arquivo e do localStorage
+  if (isGitHubPages()) {
+    // No GitHub Pages: carrega do data.json remoto, com fallback para app-data embutido
+    loadFromGitHub().then(ok => {
+      if (!ok) loadEmbeddedData()
+      _finishInit()
+    })
+    return
+  }
+  // Local: usa a fonte de dados mais recente comparando timestamps
   try {
     const lsRaw  = localStorage.getItem(STORAGE_KEY)
     const lsTime = lsRaw ? (JSON.parse(lsRaw).savedAt || 0) : 0
@@ -5022,9 +5148,12 @@ function initApp() {
     if (lsTime > embTime) { loadState() }
     else if (!loadEmbeddedData()) { loadState() }
   } catch(e) {
-    // fallback: tenta embedded, senão localStorage
     if (!loadEmbeddedData()) loadState()
   }
+  _finishInit()
+}
+
+function _finishInit() {
   // Push initial snapshot so Ctrl+Z always has a base state
   ;(function(){
     undoStack.push({
