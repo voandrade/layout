@@ -4827,31 +4827,30 @@ async function askGitHubToken() {
   return new Promise(resolve => {
     // Cria modal inline para pedir o token
     const overlay = document.createElement('div')
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;'
+    // Usando top/left/right/bottom em vez de inset para compatibilidade com Safari iOS
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;-webkit-overflow-scrolling:touch;'
     overlay.innerHTML = `
-      <div style="background:white;border-radius:12px;padding:28px 24px;width:380px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,30,.2);">
+      <div style="background:white;border-radius:12px;padding:28px 24px;width:380px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,30,.2);position:relative;">
         <div style="font-size:15px;font-weight:600;color:#101828;margin-bottom:6px;">Chave do GitHub</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.5;">
           Para publicar no GitHub Pages é necessário informar sua chave de acesso (Personal Access Token).<br>
           Ela será salva no seu navegador e não aparecerá para outros usuários.
         </div>
-        <input id="_gh-token-input" type="password" placeholder="github_pat_..." autocomplete="off"
+        <input id="_gh-token-input" type="text" inputmode="text" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
           style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;outline:none;margin-bottom:14px;font-family:monospace;">
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button id="_gh-token-cancel" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:7px;background:white;cursor:pointer;font-size:13px;color:#374151;">Cancelar</button>
-          <button id="_gh-token-ok" style="padding:7px 16px;border:none;border-radius:7px;background:#1D3F80;color:white;cursor:pointer;font-size:13px;font-weight:600;">Confirmar</button>
+          <button id="_gh-token-cancel" style="padding:10px 18px;border:1px solid #d1d5db;border-radius:7px;background:white;cursor:pointer;font-size:14px;color:#374151;">Cancelar</button>
+          <button id="_gh-token-ok" style="padding:10px 18px;border:none;border-radius:7px;background:#1D3F80;color:white;cursor:pointer;font-size:14px;font-weight:600;">Confirmar</button>
         </div>
       </div>`
     document.body.appendChild(overlay)
     const input = overlay.querySelector('#_gh-token-input')
-    input.focus()
-    overlay.querySelector('#_gh-token-cancel').onclick = () => { document.body.removeChild(overlay); resolve(null) }
-    overlay.querySelector('#_gh-token-ok').onclick = () => {
-      const v = input.value.trim()
-      document.body.removeChild(overlay)
-      resolve(v || null)
-    }
-    input.onkeydown = e => { if (e.key === 'Enter') overlay.querySelector('#_gh-token-ok').click() }
+    // setTimeout para garantir que o DOM esteja renderizado antes do focus (necessário no Safari iOS)
+    setTimeout(() => { try { input.focus() } catch(e) {} }, 100)
+    const cleanup = (val) => { try { document.body.removeChild(overlay) } catch(e) {} resolve(val) }
+    overlay.querySelector('#_gh-token-cancel').addEventListener('click', () => cleanup(null))
+    overlay.querySelector('#_gh-token-ok').addEventListener('click', () => cleanup(input.value.trim() || null))
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') overlay.querySelector('#_gh-token-ok').click() })
   })
 }
 
